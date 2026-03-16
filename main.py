@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from graph.agent_graph import agent_app
-from common.document_parser import init_builtin_knowledge_base
 from common.logger import get_logger
 
 logger = get_logger()
@@ -14,7 +13,7 @@ def init_system():
     """系统初始化"""
     logger.info("===== 系统初始化开始 =====")
     # 初始化固有知识库
-    init_builtin_knowledge_base(force_rebuild=False)
+    # init_builtin_knowledge_base(force_rebuild=False)
     logger.info("===== 系统初始化完成 =====")
 
 def run_demo():

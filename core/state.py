@@ -71,3 +71,10 @@ class AgentState(TypedDict):
     metadata: Annotated[dict, merge_dicts]
     human_approved: bool
     audit_logs: Annotated[List[Dict[str, Any]], operator.add]
+
+    # 【新增】人工审核相关字段
+    human_review_result: Optional[Dict[str, Any]] = None  # 人工审核结果（approved/comment）
+    is_human_review_completed: bool = False               # 审核是否完成
+    review_status: Optional[str] = None                   # 审核状态（pending/approved/rejected/failed）
+    review_context: Optional[Dict[str, Any]] = None       # 待审核上下文
+    review_error_msg: Optional[str] = ""                  # 审核节点异常信息

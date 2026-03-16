@@ -6,6 +6,7 @@ from nodes.output_node import output_node
 from nodes.fusion_node import fusion_node
 from nodes.planning_node import planning_node
 from nodes.preprocess_node import preprocess_node
+from nodes.human_review_node import human_review_node
 from nodes.task_executor import (
     task_executor,
     should_execute_task,
@@ -29,6 +30,7 @@ def build_agent_graph():
     builder.add_node("task_executor", task_executor)
     builder.add_node("execute_single_task", execute_single_task)
     builder.add_node("collect_task_result", collect_task_result)
+    builder.add_node("human_review_node", human_review_node)
     builder.add_node("fusion_node", fusion_node)
     builder.add_node("output_node", output_node)
 
@@ -38,14 +40,14 @@ def build_agent_graph():
     builder.add_edge("planning_node", "task_executor")
     
     # 并行任务收集逻辑
-    builder.add_conditional_edges(
-        "task_executor",
-        should_execute_task,
-        {
-            "execute_single_task": "execute_single_task",
-            "fusion_node": "fusion_node"
-        }
-    )
+    # builder.add_conditional_edges(
+    #     "task_executor",
+    #     should_execute_task,
+    #     {
+    #         "execute_single_task": "execute_single_task",
+    #         "fusion_node": "fusion_node"
+    #     }
+    # )
     builder.add_edge("execute_single_task", "collect_task_result")
     builder.add_edge("collect_task_result", "task_executor")
     
@@ -57,7 +59,7 @@ def build_agent_graph():
     memory = MemorySaver()
     app = builder.compile(
         checkpointer=memory,
-        interrupt_before=["human_review"]  # 预留人工审核中断点
+        interrupt_before=["human_review_node"]  # 预留人工审核中断点
     )
     
     logger.info("Agent状态图构建完成")

@@ -1,6 +1,7 @@
 from langgraph.types import Command
 from langchain_core.messages import HumanMessage
 
+from datetime import datetime
 from config.settings import MAX_STEPS
 from core.state import AgentState
 from core.enums import TaskPhaseEnum
@@ -30,7 +31,7 @@ def preprocess_node(state: AgentState) -> Command:
     new_state = {
         "step_count": state.get("step_count", 0) + 1,
         "current_phase": TaskPhaseEnum.INITIAL,
-        "audit_logs": [{"step": "preprocess", "time": str(logger._core.time), "action": "start_preprocess"}],
+        "audit_logs": [{"step": "preprocess", "time": str(datetime.now()), "action": "start_preprocess"}],
         "error_message": "",
     }
     

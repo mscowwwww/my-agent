@@ -35,3 +35,9 @@ class RetryPolicyEnum(str, Enum):
     RETRY = "retry"                          # 重试
     SKIP = "skip"                            # 跳过
     ABORT = "abort"                          # 终止流程
+
+class ReviewStatusEnum(Enum):
+    PENDING = "pending"    # 待审核
+    APPROVED = "approved"  # 审核通过
+    REJECTED = "rejected"  # 审核驳回
+    FAILED = "failed"      # 审核节点执行失败

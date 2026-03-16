@@ -10,7 +10,7 @@ from common.logger import get_logger
 logger = get_logger()
 
 # ===================== 主执行调度节点 =====================
-def task_executor(state: AgentState) -> Command:
+def task_executor(state: AgentState):
     """
     任务调度与执行节点
     1. 解析任务计划，筛选待执行的任务
@@ -74,8 +74,10 @@ def task_executor(state: AgentState) -> Command:
                 },
                 goto="output_node"
             )
-    
-    # 3. 生成并行执行任务（LangGraph Send API）
+        
+    return state
+
+def should_execute_task(state: AgentState) -> str:
     logger.info(f"待执行任务数: {len(pending_tasks)}，开始并行执行")
     global_context = {
         "temp_vector_collection": state.get("temp_vector_collection"),
@@ -100,23 +102,12 @@ def task_executor(state: AgentState) -> Command:
     # 限制最大并行数
     if len(send_tasks) > TASK_MAX_THREADS:
         send_tasks = send_tasks[:TASK_MAX_THREADS]
-    
-    return Command(send=send_tasks)
 
-def should_execute_task(state: AgentState) -> str:
-    """
-    条件判断函数：决定是否继续执行任务
-    :param state: Agent状态
-    :return: 下一个节点名称
-    """
-    # 【原有逻辑保留】你原有的任务判断逻辑（示例，可替换为你的实际逻辑）
-    if hasattr(state, "pending_tasks") and len(state.pending_tasks) > 0:
-        return "execute_single_task"  # 有未执行任务，走向单个任务执行节点
-    else:
-        return "fusion_node"  # 无未执行任务，走向融合节点
+    return send_tasks
+
 
 # ===================== 单任务执行函数 =====================
-def execute_single_task(state: Dict[str, Any]) -> Dict[str, Any]:
+def execute_single_task(state: AgentState) -> Dict[str, Any]:
     """
     执行单个子任务（用于并行执行）
     :param state: 包含单个task和全局上下文的状态
