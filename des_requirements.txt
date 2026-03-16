@@ -1,0 +1,26 @@
+# 核心框架
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-community>=0.3.0
+
+# 大模型与Embedding
+dashscope>=1.20.0
+sentence-transformers>=3.0.0
+flagembedding>=1.2.0
+
+# 文档解析
+unstructured>=0.15.0
+python-docx>=1.1.0
+PyPDF2>=3.0.0
+python-multipart>=0.0.9
+
+# 向量库
+chromadb>=0.5.0
+
+# 搜索工具
+duckduckgo-search>=6.0.0
+
+# 工具与通用
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+loguru>=0.7.0

@@ -1,0 +1,38 @@
+my_agent/
+├── config/                  # 配置管理模块
+│   ├── __init__.py
+│   └── settings.py          # 全局配置、模型、常量统一管理
+├── core/                    # 核心定义层
+│   ├── __init__.py
+│   ├── enums.py             # 枚举定义（任务类型、来源、阶段等）
+│   └── state.py             # Agent状态、任务Schema结构化定义
+├── common/                  # 通用工具层
+│   ├── __init__.py
+│   ├── compliance.py        # 合规校验、敏感词检测
+│   ├── document_parser.py   # 文档统一解析、分块、向量化工具
+│   ├── logger.py            # 日志与审计日志管理
+│   └── utils.py             # 通用工具函数、异常处理
+├── adapters/                # 多源信息适配器层（插件化）
+│   ├── __init__.py
+│   ├── base_adapter.py      # 适配器统一基类，规范接口
+│   ├── user_doc_adapter.py  # 用户临时文档适配器
+│   ├── builtin_kb_adapter.py# 固有知识库适配器
+│   └── web_search_adapter.py# 外网搜索适配器
+├── nodes/                   # 核心业务节点层（对应工业界5大阶段）
+│   ├── __init__.py
+│   ├── preprocess_node.py   # 前置预处理与准入管控节点
+│   ├── planning_node.py     # 意图理解与任务规划节点
+│   ├── task_executor.py     # 任务调度与多源执行节点
+│   ├── fusion_node.py       # 信息融合与二次处理节点
+│   └── output_node.py       # 最终输出与审计落盘节点
+├── graph/                   # 主流程编排层
+│   ├── __init__.py
+│   └── agent_graph.py       # LangGraph状态图构建与编译
+├── data/                    # 数据目录
+│   ├── builtin_docs/        # 固有知识库原始文档存放路径
+│   ├── knowledge_base/      # 固有知识库向量库持久化路径
+│   └── temp_user_docs/      # 用户临时文档向量库路径
+├── logs/                    # 日志与审计日志存放路径
+├── requirements.txt         # 项目依赖清单
+├── main.py                  # 项目启动入口、运行示例
+└── .env.example             # 环境变量示例文件
