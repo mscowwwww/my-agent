@@ -23,6 +23,7 @@ def task_executor(state: AgentState):
     step_count = state.get("step_count", 0)
     
     if not task_plan:
+        logger.info("未找到任务计划，无法执行")
         error_msg = "未找到任务计划，无法执行"
         logger.error(error_msg)
         return Command(
@@ -37,7 +38,9 @@ def task_executor(state: AgentState):
     
     # 1. 筛选可执行的任务（依赖已完成、状态为pending）
     pending_tasks: List[SubTask] = []
+    logger.info(f"task_results: {task_results}")
     for task in task_plan.task_list:
+        logger.info(f"task: {task}")
         if task.status != "pending":
             continue
         # 检查依赖是否全部完成
@@ -50,6 +53,7 @@ def task_executor(state: AgentState):
     
     # 2. 所有任务都处理完了，进入融合节点
     if not pending_tasks:
+        logger.info(f"pending_tasks: {pending_tasks}")
         all_completed = all(task.status == "success" for task in task_plan.task_list)
         if all_completed:
             logger.info("所有子任务执行完成，进入融合处理节点")
@@ -74,10 +78,6 @@ def task_executor(state: AgentState):
                 },
                 goto="output_node"
             )
-        
-    return state
-
-def should_execute_task(state: AgentState) -> str:
     logger.info(f"待执行任务数: {len(pending_tasks)}，开始并行执行")
     global_context = {
         "temp_vector_collection": state.get("temp_vector_collection"),
@@ -101,10 +101,10 @@ def should_execute_task(state: AgentState) -> str:
     
     # 限制最大并行数
     if len(send_tasks) > TASK_MAX_THREADS:
+        logger.info(f"限制最大并行数为:{TASK_MAX_THREADS}, 当前并行任务数为:{len(send_tasks)}")
         send_tasks = send_tasks[:TASK_MAX_THREADS]
 
-    return send_tasks
-
+    return Command(goto=send_tasks)
 
 # ===================== 单任务执行函数 =====================
 def execute_single_task(state: AgentState) -> Dict[str, Any]:
@@ -124,10 +124,12 @@ def execute_single_task(state: AgentState) -> Dict[str, Any]:
         task.result = "待融合处理"
         logger.info(f"非检索类任务标记完成: {task.task_id}")
         return {
-            "task_id": task.task_id,
-            "output_field": task.output_field,
-            "result": task.model_dump(),
-            "success": True
+            "task_results":{
+                "task_id": task.task_id,
+                "output_field": task.output_field,
+                "result": task.model_dump(),
+                "is_success": True
+            }
         }
     
     # 2. 检索类任务，调用对应适配器
@@ -138,11 +140,13 @@ def execute_single_task(state: AgentState) -> Dict[str, Any]:
         task.status = "failed"
         task.error_msg = error_msg
         return {
-            "task_id": task.task_id,
-            "output_field": task.output_field,
-            "result": task.model_dump(),
-            "success": False,
-            "error_msg": error_msg
+            "task_results":{
+                "task_id": task.task_id,
+                "output_field": task.output_field,
+                "result": task.model_dump(),
+                "is_success": False,
+                "error_msg": error_msg
+            }
         }
     
     # 3. 执行适配器
@@ -154,25 +158,29 @@ def execute_single_task(state: AgentState) -> Dict[str, Any]:
         task.result = result
         logger.info(f"子任务执行成功: {task.task_id}")
         return {
-            "task_id": task.task_id,
-            "output_field": task.output_field,
-            "result": result,
-            "success": True
+            "task_results":{
+                "task_id": task.task_id,
+                "output_field": task.output_field,
+                "result": result,
+                "is_success": True
+            }
         }
     else:
         task.status = "failed"
         task.error_msg = result
         logger.error(f"子任务执行失败: {task.task_id} | 错误: {result}")
         return {
-            "task_id": task.task_id,
-            "output_field": task.output_field,
-            "result": task.model_dump(),
-            "success": False,
-            "error_msg": result
+            "task_results":{
+                "task_id": task.task_id,
+                "output_field": task.output_field,
+                "result": task.model_dump(),
+                "is_success": False,
+                "error_msg": result
+            }
         }
 
 # ===================== 任务结果收集节点 =====================
-def collect_task_result(state: AgentState, config, results: List[Dict[str, Any]]):
+def collect_task_result(state: AgentState):
     """
     收集并行任务的执行结果，更新到全局状态
     """
@@ -180,40 +188,44 @@ def collect_task_result(state: AgentState, config, results: List[Dict[str, Any]]
     new_task_results = {}
     updated_task_list = []
     audit_logs = []
-    
+
     # 获取原任务计划
     task_plan: TaskPlan = state.get("task_plan")
     task_map = {task.task_id: task for task in task_plan.task_list}
-    
+
+    task_list = task_plan.task_list
+    logger.info(f"任务收集结果: {task_list}")
+
     # 处理每个任务的结果
-    for result in results:
-        task_id = result["task_id"]
-        output_field = result["output_field"]
-        success = result["success"]
-        
-        if success:
-            new_task_results[output_field] = result["result"]
+    for task in task_list:
+        task_id = task.task_id
+        task_output_field = task.output_field
+        task_result = task.result
+
+        is_success = (task.status == "success")
+        if is_success:
+            new_task_results[task_output_field] = task_result
             # 更新任务状态
             if task_id in task_map:
                 task_map[task_id].status = "success"
-                task_map[task_id].result = result["result"]
+                task_map[task_id].result = task_result
             audit_logs.append({"task_id": task_id, "status": "success"})
             logger.info(f"任务结果收集完成: {task_id}")
-        else:
-            # 处理失败任务
-            if task_id in task_map:
-                task = task_map[task_id]
-                task.current_retry += 1
-                # 判断是否可以重试
-                if task.current_retry < task.max_retries and task.retry_policy == RetryPolicyEnum.RETRY:
-                    task.status = "pending"
-                    task.error_msg = result.get("error_msg", "未知错误")
-                    logger.warning(f"任务{task_id}执行失败，准备第{task.current_retry}次重试")
-                else:
-                    task.status = "failed"
-                    task.error_msg = result.get("error_msg", "未知错误")
-                    logger.error(f"任务{task_id}执行失败，已达最大重试次数")
-            audit_logs.append({"task_id": task_id, "status": "failed", "error": result.get("error_msg")})
+        # else:
+            # # 处理失败任务
+            # if task_id in task_map:
+            #     task = task_map[task_id]
+            #     task.current_retry += 1
+            #     # 判断是否可以重试
+            #     if task.current_retry < task.max_retries and task.retry_policy == RetryPolicyEnum.RETRY:
+            #         task.status = "pending"
+            #         task.error_msg = result.get("error_msg", "未知错误")
+            #         logger.warning(f"任务{task_id}执行失败，准备第{task.current_retry}次重试")
+            #     else:
+            #         task.status = "failed"
+            #         task.error_msg = result.get("error_msg", "未知错误")
+            #         logger.error(f"任务{task_id}执行失败，已达最大重试次数")
+            # audit_logs.append({"task_id": task_id, "status": "failed", "error": result.error_msg})
     
     # 更新任务计划
     updated_task_list = list(task_map.values())

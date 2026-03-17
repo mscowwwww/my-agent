@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 import json
 
 from core.state import SubTask
@@ -20,7 +20,7 @@ class WebSearchAdapter(BaseAdapter):
             # 执行搜索
             with DDGS() as ddgs:
                 results = ddgs.text(
-                    keywords=query,
+                    query=query,
                     region="cn-zh",
                     safesearch="moderate",
                     timelimit="y",
@@ -29,7 +29,8 @@ class WebSearchAdapter(BaseAdapter):
             
             if not results:
                 return False, "未搜索到相关结果"
-            
+            logger.info(f"搜索到相关结果，results: {results}")
+
             # 格式化结果，绑定来源
             formatted_list = []
             for idx, r in enumerate(results):

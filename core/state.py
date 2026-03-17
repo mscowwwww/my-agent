@@ -25,18 +25,18 @@ class SubTask(BaseModel):
     output_field: str = Field(description="结果存储的字段名，全局唯一")
     retry_policy: RetryPolicyEnum = Field(default=RetryPolicyEnum.RETRY, description="失败重试策略")
     priority: int = Field(default=1, description="执行优先级，数字越小优先级越高")
-    max_retries: int = Field(default=2, description="最大重试次数")
-    current_retry: int = Field(default=0, description="当前重试次数")
     status: Literal["pending", "running", "success", "failed"] = Field(default="pending", description="任务状态")
     result: str = Field(default="", description="任务执行结果")
     error_msg: str = Field(default="", description="错误信息")
+    max_retries: int = Field(default=2, description="最大重试次数")
+    current_retry: int = Field(default=0, description="当前重试次数")
 
 # ===================== 任务计划Schema =====================
 class TaskPlan(BaseModel):
     """全局任务计划定义"""
     user_core_intent: str = Field(description="提炼的用户核心诉求")
     total_tasks: int = Field(description="子任务总数")
-    task_list: List[SubTask] = Field(description="子任务列表")
+    task_list: Annotated[List[SubTask], operator.add] = Field(description="子任务列表")
     final_output_requirement: str = Field(description="最终输出的格式与内容要求")
     is_valid: bool = Field(default=True, description="任务计划是否合法")
     invalid_reason: str = Field(default="", description="不合法的原因")
@@ -59,7 +59,6 @@ class AgentState(TypedDict):
     current_phase: TaskPhaseEnum
     step_count: int
     error_message: str
-
     # 多源任务执行结果（按output_field存储，key=output_field, value=结果）
     task_results: Annotated[Dict[str, Any], merge_task_results]
 
