@@ -21,6 +21,7 @@ def planning_node(state: AgentState) -> Command:
     logger.info("===== 进入任务规划节点 =====")
     thread_id = state.get("thread_id", "unknown")
     input_text = state.get("input_text", "")
+    user_id = state.get("user_id", "unknown")
     user_role = state.get("user_role", "user")
     has_user_doc = bool(state.get("temp_vector_collection"))
     
@@ -46,8 +47,8 @@ def planning_node(state: AgentState) -> Command:
     1. 先判断需要哪些信息源，先做信息获取类任务，再做处理类任务
     2. 处理类任务（compare/summarize等）必须依赖前置的信息获取任务，depend_on填写前置任务的task_id
     3. 每个子任务只做一件事，职责单一，不要把多个动作合并到一个任务
-    4. 无依赖的任务可以并行执行，depend_on为空数组
-    5. 必须给每个任务定义唯一的output_field，后续任务可以通过该字段获取结果
+    4. task_id需保持唯一性，格式为 task_{user_id}_{thread_id}_序号_随机数
+    5. 无依赖的任务可以并行执行，depend_on为空数组
     6. execution_requirement必须精准、具体，不能模糊
     7. 必须严格按照用户的诉求拆解，不要添加无关任务，也不要遗漏核心诉求
 
@@ -58,12 +59,11 @@ def planning_node(state: AgentState) -> Command:
         "total_tasks": 子任务总数,
         "task_list": [
             {{
-                "task_id": "task_001",
+                "task_id": "task_user34234_yyyyMMdd_001_dhakfsdk",
                 "task_type": "任务类型枚举值",
                 "target_source": "信息来源枚举值",
                 "execution_requirement": "精准的执行要求",
                 "depend_on": ["依赖的task_id列表"],
-                "output_field": "唯一的结果存储字段名",
                 "retry_policy": "retry/skip/abort",
                 "priority": 1
             }}
@@ -89,6 +89,7 @@ def planning_node(state: AgentState) -> Command:
         
         # 校验任务计划合法性
         if not task_plan.is_valid:
+            logger.info(f"任务规划失败：请求不合法")
             error_msg = f"任务规划失败：{task_plan.invalid_reason}"
             logger.error(error_msg)
             return Command(
@@ -102,10 +103,11 @@ def planning_node(state: AgentState) -> Command:
                 goto="output_node"
             )
         
-        # 校验output_field唯一性
-        output_fields = [task.output_field for task in task_plan.task_list]
-        if len(output_fields) != len(set(output_fields)):
-            error_msg = "任务规划失败：output_field存在重复"
+        # 校验task_id唯一性
+        task_id = [task.task_id for task in task_plan.task_list]
+        if len(task_id) != len(set(task_id)): # set() 是 Python 的集合数据类型，它的特性是自动去重，只保留唯一的值。
+            logger.info(f"任务规划失败：{task_id}存在重复")
+            error_msg = "任务规划失败：task_id存在重复"
             logger.error(error_msg)
             return Command(
                 update={
@@ -117,7 +119,7 @@ def planning_node(state: AgentState) -> Command:
                 goto="output_node"
             )
         
-        logger.info(f"任务规划完成，共拆解{task_plan.total_tasks}个子任务")
+        logger.info(f"任务规划完成：共拆解{task_plan.total_tasks}个子任务")
         audit_logger.info(f"任务规划完成 | thread_id: {thread_id} | 任务数: {task_plan.total_tasks}")
         
         # 更新状态
@@ -126,7 +128,6 @@ def planning_node(state: AgentState) -> Command:
                 "task_plan": task_plan,
                 "current_phase": TaskPhaseEnum.PLANNING_DONE,
                 "step_count": state["step_count"] + 1,
-                "task_results": {},
                 "audit_logs": [{"step": "planning", "action": "plan_generated", "task_count": task_plan.total_tasks}]
             },
             goto="task_executor"

@@ -5,6 +5,7 @@ import json
 from core.state import SubTask
 from .base_adapter import BaseAdapter
 from common.logger import get_logger
+from langchain_community.document_loaders import WebBaseLoader
 
 logger = get_logger()
 
@@ -29,17 +30,34 @@ class WebSearchAdapter(BaseAdapter):
             
             if not results:
                 return False, "未搜索到相关结果"
-            logger.info(f"搜索到相关结果，results: {results}")
 
             # 格式化结果，绑定来源
             formatted_list = []
-            for idx, r in enumerate(results):
-                title = r.get("title", "")[:150]
-                snippet = r.get("body", "")[:300]
-                link = r.get("href", "")
-                formatted_list.append(f"【来源：外网搜索 - {title}】\n内容摘要：{snippet}\n链接：{link}\n")
+            # for idx, r in enumerate(results):
+            #     title = r.get("title", "")[:150]
+            #     snippet = r.get("body", "")[:300]
+            #     link = r.get("href", "")
+            #     formatted_list.append(f"【来源：外网搜索 - {title}】\n内容摘要：{snippet}\n链接：{link}\n")
+            for result in results:
+                try:
+                    url = result.get("href")
+                    if not url:
+                        continue
+    
+                    # 抓取网页完整内容
+                    loader = WebBaseLoader(url)
+                    docs = loader.load()
+                    content = docs[0].page_content
+                    formatted_list.append({
+                        "url": url,
+                        "content": content[:2000] # 防止 token 溢出，可截取或分块
+                    })
+                except:
+                    None
             
             formatted_result = "\n---\n".join(formatted_list)
+            logger.info(f"formatted_result: {formatted_result}")
+
             return True, formatted_result
         
         except Exception as e:

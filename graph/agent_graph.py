@@ -37,7 +37,6 @@ def build_agent_graph():
     builder.add_edge(START, "preprocess_node")
     builder.add_edge("preprocess_node", "planning_node")
     builder.add_edge("planning_node", "task_executor")
-    
     # 并行任务收集逻辑
     # builder.add_conditional_edges(
     #     "task_executor",
@@ -47,7 +46,7 @@ def build_agent_graph():
     #         "fusion_node": "fusion_node"
     #     }
     # )
-    builder.add_edge("execute_single_task", "collect_task_result")
+    builder.add_edge("execute_single_task", "task_executor")
     builder.add_edge("collect_task_result", "task_executor")
     
     # 执行完成后进入融合节点

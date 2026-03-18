@@ -19,15 +19,14 @@ class SubTask(BaseModel):
     """子任务结构化定义"""
     task_id: str = Field(description="子任务唯一ID，格式：task_xxx")
     task_type: TaskTypeEnum = Field(description="子任务类型")
+    depend_on: List[str] = Field(default_factory=list, description="依赖的前置任务ID列表")
+    priority: int = Field(default=1, description="执行优先级，数字越小优先级越高")
     target_source: SourceTypeEnum = Field(description="目标信息来源")
     execution_requirement: str = Field(description="执行要求，精准描述要做的事")
-    depend_on: List[str] = Field(default_factory=list, description="依赖的前置任务ID列表")
-    output_field: str = Field(description="结果存储的字段名，全局唯一")
-    retry_policy: RetryPolicyEnum = Field(default=RetryPolicyEnum.RETRY, description="失败重试策略")
-    priority: int = Field(default=1, description="执行优先级，数字越小优先级越高")
     status: Literal["pending", "running", "success", "failed"] = Field(default="pending", description="任务状态")
     result: str = Field(default="", description="任务执行结果")
     error_msg: str = Field(default="", description="错误信息")
+    retry_policy: RetryPolicyEnum = Field(default=RetryPolicyEnum.RETRY, description="失败重试策略")
     max_retries: int = Field(default=2, description="最大重试次数")
     current_retry: int = Field(default=0, description="当前重试次数")
 
@@ -59,8 +58,6 @@ class AgentState(TypedDict):
     current_phase: TaskPhaseEnum
     step_count: int
     error_message: str
-    # 多源任务执行结果（按output_field存储，key=output_field, value=结果）
-    task_results: Annotated[Dict[str, Any], merge_task_results]
 
     # 用户文档相关
     user_documents: List[Dict[str, Any]]  # 用户上传的文档列表 [{content, source, doc_id}]

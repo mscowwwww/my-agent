@@ -17,7 +17,6 @@ def fusion_node(state: AgentState) -> Command:
     """
     logger.info("===== 进入信息融合节点 =====")
     task_plan = state.get("task_plan")
-    task_results = state.get("task_results", {})
     input_text = state.get("input_text", "")
     
     if not task_plan:
@@ -37,9 +36,10 @@ def fusion_node(state: AgentState) -> Command:
     context_parts = []
     context_parts.append(f"用户原始请求：{input_text}")
     context_parts.append("\n【已获取的信息结果】")
-    for field_name, result_content in task_results.items():
-        context_parts.append(f"--- {field_name} ---\n{result_content}\n")
-    
+    for task in task_plan.task_list:
+        context_parts.append(f"--- {task} ---\n")
+    logger.info(f"已获取的信息结果: {context_parts}")
+
     context = "\n".join(context_parts)
     
     # 3. 构造处理指令
